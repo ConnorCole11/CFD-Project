@@ -1,0 +1,7 @@
+{
+    "cmake.sourceDirectory": "C:/Users/ccole/Desktop/code/repos/ConnorCole11/CFD-Project",
+    "cmake.generator": "MinGW Makefiles",
+    "cmake.configureSettings": {
+        "CMAKE_CXX_COMPILER": "C:/msys64/ucrt64/bin/g++.exe"
+    }
+}

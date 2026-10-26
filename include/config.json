@@ -1,0 +1,24 @@
+{
+    "channel": {
+    "length": 5.0,
+    "width": 5.0,
+    "height": 5.0,
+    "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    },
+    "in_pressure": 1,
+    "out_pressure": 0
+    },
+
+    "mesh": {
+        "name": "channel",
+        "resolution": 1.0
+    },
+
+    "CFD": {
+        "timestep_size": 0.01,
+        "timesteps": 1000
+    }
+}
