@@ -3,6 +3,8 @@
 #include <algorithm>      // std::max
 #include <stdexcept>      // std::invalid_argument
 #include <iostream>
+#include <utility>
+#include <numbers>
 
 // RectangularChannelSMesh::RectangularChannelSMesh(){
 
@@ -165,7 +167,7 @@ void RectangularChannelSMesh::generate_triangles(
 }
 
 
-void RectangularChannelSMesh::generate(double target_resolution, RectangularChannel channel){
+void RectangularChannelSMesh::generate_smesh(double target_resolution, RectangularChannel channel){
     // Get channel dimensions
     double length = channel.length();
     double width = channel.width();
@@ -214,3 +216,98 @@ const std::vector<Point3D>& RectangularChannelSMesh::points() const {
 const std::vector<Triangle>& RectangularChannelSMesh::triangles() const {
     return triangles_;
 }
+
+
+void RectangularChannelSMesh::generate_gmsh(
+    const std::vector<Triangle>& triangles, 
+    const std::vector<Point3D>& points) 
+    {
+        // Define gmsh boundary tag
+        const int surface_tag = gmsh::model::addDiscreteEntity(2);
+
+        // Define gmsh node tags and coords
+        std::vector<std::size_t> node_tags;
+        std::vector<double> node_coords;
+
+        node_tags.reserve(points.size());
+        node_coords.reserve(points.size()*3);
+
+        // Convert points into gmsh's expected data structure
+        for (std::size_t i = 0; i < points.size(); i++){
+            node_tags.push_back(i+1); // gmsh usually starts with 1 I guess)
+
+            node_coords.push_back(points[i].x);
+            node_coords.push_back(points[i].y);
+            node_coords.push_back(points[i].z);
+        }
+        
+        // Add that data structure to gmsh mesh
+        gmsh::model::mesh::addNodes(
+            2, surface_tag, node_tags, node_coords
+        );
+
+        // Define gmsh triangle tags and coords
+        std::vector<std::size_t> element_tags;
+        std::vector<std::size_t> connectivity;
+
+        element_tags.reserve(triangles.size());
+        connectivity.reserve(triangles.size()*3);
+
+        // convert triangle data to gmsh's expected data structure
+        for (std::size_t i = 0; i < triangles.size(); i++) {
+            element_tags.push_back(i+1);
+
+            connectivity.push_back(triangles[i].points[0] + 1);
+            connectivity.push_back(triangles[i].points[1] + 1);
+            connectivity.push_back(triangles[i].points[2] + 1);
+        }
+        
+        // Add new data structure to gmsh's model
+        gmsh::model::mesh::addElementsByType(
+            surface_tag, 2, element_tags, connectivity
+        );
+
+        // Classify the imported triangle mesh into surface patches.
+        const double pi = std::acos(-1.0);
+
+        gmsh::model::mesh::classifySurfaces(
+            40.0 * pi / 180.0,  // Angle threshold in radians
+            true,               // Create curves at open boundaries
+            true,               // Create reparametrizable surfaces
+            pi,                 // Curve angle threshold
+            true                // Export discrete entities
+        );
+
+        // Create geometry from the classified surface mesh.
+        gmsh::model::mesh::createGeometry();
+
+        // Collect all surface entities.
+        std::vector<std::pair<int, int>> surfaces;
+        gmsh::model::getEntities(surfaces, 2);
+        // Collect the tags of all classified surface patches.
+        std::vector<int> surface_tags;
+        surface_tags.reserve(surfaces.size());
+
+        for (const auto& [dim, tag] : surfaces) {
+            surface_tags.push_back(tag);
+        }
+
+        if (surface_tags.empty()) {
+            throw std::runtime_error(
+                "No surfaces found after classifying the surface mesh"
+            );
+        }
+
+        // Create a closed shell from the surface patches.
+        int shell_tag = gmsh::model::geo::addSurfaceLoop(surface_tags);
+
+        // Create a volume bounded by that shell.
+        gmsh::model::geo::addVolume({shell_tag});
+
+        // Synchronize the geometry before generating the volume mesh.
+        gmsh::model::geo::synchronize();
+
+        std::cout << "Created volume from "
+                << surface_tags.size()
+                << " surface patches.\n";
+}  

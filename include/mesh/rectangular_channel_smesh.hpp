@@ -5,6 +5,7 @@
 #include <vector>
 #include <array>
 #include <unordered_map>
+#include <gmsh.h>
 
 class RectangularChannelSMesh {
 public:
@@ -20,7 +21,14 @@ public:
 
     RectangularChannelSMesh();
 
-    void generate(double resolution, RectangularChannel channel);
+    void generate_smesh(
+        double resolution, 
+        RectangularChannel channel
+    );
+    void generate_gmsh(
+        const std::vector<Triangle>& triangles, 
+        const std::vector<Point3D>& points
+    );
 
     const std::vector<Point3D>& points() const;
     const std::vector<Triangle>& triangles() const;

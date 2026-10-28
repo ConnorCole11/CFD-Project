@@ -3,14 +3,10 @@
 #include "config_read.hpp"
 #include <string>
 #include "mesh/rectangular_channel_smesh.hpp"
-#include "mesh/gmsh_conversion.hpp"
+#include "mesh/rectangular_channel_vmesh.hpp"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
-
-void gen_channel(double length, double width, double height) {
-    std::cout << "Hello, CFD!" << '\n';
-}
 
 int main(){
     // Parse json file
@@ -27,29 +23,27 @@ int main(){
 
     // Create channel based on json file
     RectangularChannel channel(length, width, height, center);
+    RectangularChannelSMesh s_mesher;
+    RectangularChannelVMesh v_mesher;
 
+    s_mesher.generate_smesh(res, channel);
 
-    RectangularChannelSMesh s_mesh;
-    s_mesh.generate(res, channel);
-    s_mesh.debug();
-
-    std::cout << "Mesh vertices: " << s_mesh.points().size() << std::endl;
-    std::cout << "Mesh triangles: " << s_mesh.triangles().size() << std::endl;
-
-    std::cout << "Converting to gmsh surface..." << std::endl;
-
-    // Gmsh
+    // Gmsh ----------------
     gmsh::initialize();
-    GmshConvertor convertor;
-    convertor.convert_to_gmsh(s_mesh.triangles(), s_mesh.points());
+    gmsh::model::add(name);
 
-    // Generate the 3D tetrahedral mesh
-    gmsh::model::mesh::generate(3);
+    // Convert surface data to gmsh structure
+    s_mesher.generate_gmsh(s_mesher.triangles(), s_mesher.points());
+    std::cout << "Returned to main()" << std::endl;
 
-    // Save the mesh
-    gmsh::write(PROJ_ROOT "/organ_on_chip.msh");
-
+    // Generate the gmsh surface to 3D tetrahedral mesh and convert to VolumeMesh data stucture
+    v_mesher.gmsh_to_vmesh();
     gmsh::finalize();
 
+    // Use local datastructures
+    v_mesher.build_lookups();
+    VolumeMesh v_mesh = v_mesher.get_vmesh();
+
+    std::cout << "End of main" << std::endl;
     return 0;
 }

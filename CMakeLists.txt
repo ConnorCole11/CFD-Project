@@ -23,7 +23,7 @@ add_executable(organ_on_chip
     src/geometry/rectangular_channel.cpp
     src/config_read.cpp
     src/mesh/rectangular_channel_smesh.cpp
-    src/mesh/gmsh_conversion.cpp
+    src/mesh/rectangular_channel_vmesh.cpp
 )
 
 target_include_directories(organ_on_chip
